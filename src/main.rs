@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use clap::Parser;
+use mimalloc::MiMalloc;
 use reqwest::Client;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use mimalloc::MiMalloc;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -38,11 +38,8 @@ async fn main() -> Result<()> {
     // 1. 构造带有性能参数的 URL
     // input_format_parallel_parsing=1: 开启格式并行解析（对ORC至关重要）
     // max_insert_threads: 提升写入并发
-    let query = format!(
-        "INSERT INTO {} FORMAT ORC",
-        args.table
-    );
-    
+    let query = format!("INSERT INTO {} FORMAT ORC", args.table);
+
     let target_url = format!(
         "{}/?query={}&input_format_parallel_parsing=1&max_insert_threads={}",
         args.url,
@@ -57,14 +54,15 @@ async fn main() -> Result<()> {
     let file = File::open(&args.file)
         .await
         .with_context(|| format!("无法打开文件: {:?}", args.file))?;
-    
-    let stream = ReaderStream::with_capacity(file, 1024 * 1024); // 1MB 读缓冲区
+
+    let stream = ReaderStream::with_capacity(file, 16 * 1024 * 1024); // 16MB 读缓冲区
     let body = reqwest::Body::wrap_stream(stream);
 
     // 3. 配置 HTTP 客户端
     let client = Client::builder()
         .connect_timeout(Duration::from_secs(10))
         .tcp_keepalive(Duration::from_secs(60))
+        .tcp_nodelay(true) // 减少延迟
         .build()?;
 
     // 4. 执行 POST 请求

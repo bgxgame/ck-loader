@@ -29,6 +29,9 @@ struct Args {
 
     #[arg(long, default_value = "8", help = "CK服务端并行写入线程数")]
     threads: u32,
+
+    #[arg(long, default_value = "8", help = "缓冲区大小MB")]
+    cap: u32,
 }
 
 #[tokio::main]
@@ -55,7 +58,7 @@ async fn main() -> Result<()> {
         .await
         .with_context(|| format!("无法打开文件: {:?}", args.file))?;
 
-    let stream = ReaderStream::with_capacity(file, 16 * 1024 * 1024); // 16MB 读缓冲区
+    let stream = ReaderStream::with_capacity(file, (args.cap as usize) * 1024 * 1024); //  读缓冲区大小
     let body = reqwest::Body::wrap_stream(stream);
 
     // 3. 配置 HTTP 客户端

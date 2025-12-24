@@ -28,13 +28,6 @@ struct Args {
     #[arg(long, default_value = "123")]
     password: String,
 
-<<<<<<< HEAD
-    #[arg(long, default_value = "16", help = "CK服务端并行写入线程数")]
-    threads: u32,
-
-    #[arg(long, default_value = "32", help = "缓冲区大小MB")]
-    cap: u32,
-=======
     #[arg(short, long, default_value = "4", help = "最大并行文件数")]
     workers: usize,
 
@@ -43,7 +36,6 @@ struct Args {
 
     #[arg(long, default_value = "1800", help = "单个文件导入超时时间(秒)")]
     timeout_secs: u64,
->>>>>>> c7b10203e1aa92586518bc97927775369148ac9c
 }
 
 #[tokio::main]

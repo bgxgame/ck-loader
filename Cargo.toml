@@ -5,19 +5,11 @@ edition = "2021"
 rust-version = "1.80" # 要求最低 Rust 版本
 
 [dependencies]
-# 异步运行时：处理高并发 IO
-tokio = { version = "1.42", features = ["full"] }
-# 异步 IO 桥接工具：用于文件流转 Body
+tokio = { version = "1.40", features = ["full"] }
 tokio-util = { version = "0.7", features = ["io"] }
-# HTTP 客户端：关闭默认 tls，改用 rustls 以便静态编译
-reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls", "http2", "charset"] }
-# 错误处理：生产环境必备
+futures = "0.3"
+clap = { version = "4.4", features = ["derive"] }
 anyhow = "1.0"
-# 命令行解析：最新 v4 语法
-clap = { version = "4.5", features = ["derive"] }
-# URL 编码：处理 SQL 中的特殊字符
-urlencoding = "2.1"
-# 性能优化：极速内存分配器 (可选，推荐在大文件场景使用)
 mimalloc = "0.1"
 
 [profile.release]

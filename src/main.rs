@@ -64,6 +64,8 @@ async fn main() -> Result<()> {
     // 3. 配置 HTTP 客户端
     let client = Client::builder()
         .connect_timeout(Duration::from_secs(10))
+            // 对于超大文件，给予更长的总超时时间
+    .timeout(Duration::from_secs(7200)) 
         .tcp_keepalive(Duration::from_secs(60))
         .tcp_nodelay(true) // 减少延迟
         .build()?;
@@ -86,7 +88,7 @@ async fn main() -> Result<()> {
         let status = response.status();
         let error_body = response.text().await.unwrap_or_default();
         eprintln!("❌ 加载失败 (HTTP {}):", status);
-        eprintln!("{}", error_body);
+        eprintln!("{}", error_body.chars().take(2000).collect::<String>());
         std::process::exit(1);
     }
 

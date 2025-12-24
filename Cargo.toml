@@ -11,8 +11,6 @@ futures = "0.3"
 clap = { version = "4.4", features = ["derive"] }
 anyhow = "1.0"
 mimalloc = "0.1"
-lz4_flex = "0.11"
-async-compression = { version = "0.4", features = ["tokio", "lz4"] }
 
 [profile.release]
 opt-level = 3        # 最大优化

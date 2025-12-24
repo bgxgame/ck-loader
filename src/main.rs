@@ -3,11 +3,12 @@ use clap::Parser;
 use futures::future::join_all;
 use mimalloc::MiMalloc;
 use std::path::PathBuf;
-use std::time::Duration;
-use tokio::fs::File;
-// 引入异步压缩支持
-use async_compression::tokio::bufread::Lz4Encoder;
-use tokio_util::io::{ReaderStream, StreamReader};
+use std::process::Stdio;
+use std::sync::Arc;
+use std::time::Instant;
+use tokio::process::Command;
+use tokio::sync::Semaphore;
+use tokio::time::{self, Duration};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -66,65 +67,11 @@ async fn main() -> Result<()> {
         total_files, args.workers, args.threads
     );
 
-<<<<<<< HEAD
-    println!("🚀 开始加载文件: {:?}", args.file);
-    println!("📅 目标表: {}", args.table);
-
-    // 2. 准备文件流
-    let file = File::open(&args.file)
-        .await
-        .with_context(|| format!("无法打开文件: {:?}", args.file))?;
-
-    // 读取文件 -> 异步流
-    let file_stream = ReaderStream::with_capacity(file, (args.cap as usize) * 1024 * 1024);
-
-    // 将流转为 AsyncRead
-    let reader = StreamReader::new(file_stream);
-
-    // 使用 LZ4Encoder 进行实时压缩 (使用标准转码，无需手动管理 Header)
-    let lz4_encoder = Lz4Encoder::new(reader);
-
-    // 将压缩后的数据重新转回流发送给 Reqwest
-    let compressed_stream = ReaderStream::new(lz4_encoder);
-    let body = reqwest::Body::wrap_stream(compressed_stream);
-
-    // 3. 配置 HTTP 客户端
-    let client = Client::builder()
-        .connect_timeout(Duration::from_secs(10))
-        // 对于超大文件，给予更长的总超时时间
-        .timeout(Duration::from_secs(7200))
-        .tcp_keepalive(Duration::from_secs(60))
-        .tcp_nodelay(true) // 减少延迟
-        .build()?;
-
-    // 4. 执行 POST 请求
-    let start_time = std::time::Instant::now();
-    let response = client
-        .post(&target_url)
-        .basic_auth(args.user, Some(args.password))
-        .header("Content-Encoding", "lz4")
-        .body(body)
-        .send()
-        .await
-        .context("发送请求至 ClickHouse 失败")?;
-
-    // 5. 结果检查
-    if response.status().is_success() {
-        let duration = start_time.elapsed();
-        println!("✅ 加载成功！耗时: {:?}", duration);
-    } else {
-        let status = response.status();
-        let error_body = response.text().await.unwrap_or_default();
-        eprintln!("❌ 加载失败 (HTTP {}):", status);
-        eprintln!("{}", error_body.chars().take(2000).collect::<String>());
-        std::process::exit(1);
-=======
     // 2. 环境准备：创建 done 目录
     let mut done_dir = args.dir.clone();
     done_dir.push("done");
     if !done_dir.exists() {
         std::fs::create_dir_all(&done_dir).context("无法创建 done 目录")?;
->>>>>>> c7b10203e1aa92586518bc97927775369148ac9c
     }
 
     // 3. 构造共享资源

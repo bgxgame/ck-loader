@@ -5,10 +5,13 @@ use reqwest::Client;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::fs::File;
-use tokio_util::io::ReaderStream;
+// 引入异步压缩支持
+use async_compression::tokio::bufread::Lz4Encoder;
+use tokio_util::io::{ReaderStream, StreamReader};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about = "ClickHouse 大文件高速导入工具")]
 struct Args {
@@ -27,10 +30,10 @@ struct Args {
     #[arg(long, default_value = "")]
     password: String,
 
-    #[arg(long, default_value = "8", help = "CK服务端并行写入线程数")]
+    #[arg(long, default_value = "16", help = "CK服务端并行写入线程数")]
     threads: u32,
 
-    #[arg(long, default_value = "8", help = "缓冲区大小MB")]
+    #[arg(long, default_value = "32", help = "缓冲区大小MB")]
     cap: u32,
 }
 
@@ -58,12 +61,24 @@ async fn main() -> Result<()> {
         .await
         .with_context(|| format!("无法打开文件: {:?}", args.file))?;
 
-    let stream = ReaderStream::with_capacity(file, (args.cap as usize) * 1024 * 1024); //  读缓冲区大小
-    let body = reqwest::Body::wrap_stream(stream);
+    // 读取文件 -> 异步流
+    let file_stream = ReaderStream::with_capacity(file, (args.cap as usize) * 1024 * 1024);
+
+    // 将流转为 AsyncRead
+    let reader = StreamReader::new(file_stream);
+
+    // 使用 LZ4Encoder 进行实时压缩 (使用标准转码，无需手动管理 Header)
+    let lz4_encoder = Lz4Encoder::new(reader);
+
+    // 将压缩后的数据重新转回流发送给 Reqwest
+    let compressed_stream = ReaderStream::new(lz4_encoder);
+    let body = reqwest::Body::wrap_stream(compressed_stream);
 
     // 3. 配置 HTTP 客户端
     let client = Client::builder()
         .connect_timeout(Duration::from_secs(10))
+        // 对于超大文件，给予更长的总超时时间
+        .timeout(Duration::from_secs(7200))
         .tcp_keepalive(Duration::from_secs(60))
         .tcp_nodelay(true) // 减少延迟
         .build()?;
@@ -73,6 +88,7 @@ async fn main() -> Result<()> {
     let response = client
         .post(&target_url)
         .basic_auth(args.user, Some(args.password))
+        .header("Content-Encoding", "lz4")
         .body(body)
         .send()
         .await
@@ -86,7 +102,7 @@ async fn main() -> Result<()> {
         let status = response.status();
         let error_body = response.text().await.unwrap_or_default();
         eprintln!("❌ 加载失败 (HTTP {}):", status);
-        eprintln!("{}", error_body);
+        eprintln!("{}", error_body.chars().take(2000).collect::<String>());
         std::process::exit(1);
     }
 

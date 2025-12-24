@@ -3,20 +3,11 @@ use clap::Parser;
 use futures::future::join_all;
 use mimalloc::MiMalloc;
 use std::path::PathBuf;
-<<<<<<< HEAD
 use std::time::Duration;
 use tokio::fs::File;
 // 引入异步压缩支持
 use async_compression::tokio::bufread::Lz4Encoder;
 use tokio_util::io::{ReaderStream, StreamReader};
-=======
-use std::process::Stdio;
-use std::sync::Arc;
-use std::time::Instant;
-use tokio::process::Command;
-use tokio::sync::Semaphore;
-use tokio::time::{self, Duration};
->>>>>>> c7b10203e1aa92586518bc97927775369148ac9c
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
